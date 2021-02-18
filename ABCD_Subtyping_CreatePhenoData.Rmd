@@ -1,0 +1,451 @@
+---
+title: "Get_ABCD_CMI_Pheno_Data"
+author: "Lucinda Sisk"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE, conflict_prefer("select", "dplyr"), conflict_prefer("filter", "dplyr")}
+library(tidyverse)
+library(dplyr)
+library(hablar)
+library(eqs2lavaan)
+```
+
+```{r, tidy=TRUE}
+
+sample1 <- read_csv('/Users/lucindasisk/Box/LS_Folders/CANDLab/Projects/CMI_Structural_ABCD/Data/CMI_ABCD_Sample1_IDs.csv') 
+sample2 <- read_csv('/Users/lucindasisk/Box/LS_Folders//CANDLab/Projects/CMI_Structural_ABCD/Data/CMI_ABCD_Sample2_IDs.csv')
+
+samples <- rbind(sample1, sample2) %>% 
+    arrange(subjectkey)
+
+abcd_ptsd <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/abcd_ptsd01.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(eventname == "baseline_year_1_arm_1") %>% 
+    right_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+fha1 <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/fhxp102.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(eventname == "baseline_year_1_arm_1") %>% 
+    #right_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+fha2 <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/fhxp201.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(visit == "baseline_year_1_arm_1") %>% 
+    #right_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+ce_sumscores_y <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/abcd_sscey01.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(eventname == "baseline_year_1_arm_1") %>% 
+    #right_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+ce_sumscores_p <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/abcd_sscep01.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(eventname == "baseline_year_1_arm_1") %>% 
+    #inner_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+cbclscores_y <- read_tsv('/Users/lucindasisk/Desktop/ABCD/ABCDstudyNDA-2.0/abcd_cbcls01.txt') %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_")) %>% 
+    filter(eventname == "baseline_year_1_arm_1") %>% 
+    inner_join(samples, by="subjectkey") %>% 
+    arrange(subjectkey)
+
+```
+
+```{r, tidy=TRUE}
+# #Physical Abuse code
+# phys_ab <- abcd_ptsd %>% 
+#     select("subjectkey", "ksads_ptsd_raw_761_p","ksads_ptsd_raw_762_p","ksads_ptsd_raw_763_p") %>% 
+#     type_convert(col_types = cols(ksads_ptsd_raw_761_p ="i",
+#                                   ksads_ptsd_raw_762_p = "i",
+#                                   ksads_ptsd_raw_763_p = "i")) %>% 
+#     mutate(physical_abuse_sum = rowSums(.[2:4])) %>% 
+#     select("subjectkey", "physical_abuse_sum")
+# 
+# #Sexual Abyse code 
+# sex_ab <- abcd_ptsd %>% 
+#     select("subjectkey", "ksads_ptsd_raw_767_p","ksads_ptsd_raw_768_p", "ksads_ptsd_raw_769_p") %>% 
+#     type_convert(col_types = cols(ksads_ptsd_raw_767_p ="i",
+#                                   ksads_ptsd_raw_768_p = "i",
+#                                   ksads_ptsd_raw_769_p = "i")) %>% 
+#     mutate(sexual_abuse_sum = rowSums(.[2:4])) %>% 
+#     select("subjectkey", "sexual_abuse_sum")
+# 
+# #Exposure to violence code
+# exp_violence <- abcd_ptsd %>% 
+#     select("subjectkey", "ksads_ptsd_raw_758_p", "ksads_ptsd_raw_759_p", "ksads_ptsd_raw_760_p", "ksads_ptsd_raw_764_p", "ksads_ptsd_raw_765_p") %>% 
+#     type_convert(col_types = cols(ksads_ptsd_raw_758_p = "i",
+#                                   ksads_ptsd_raw_759_p = "i",
+#                                   ksads_ptsd_raw_760_p ="i",
+#                                   ksads_ptsd_raw_764_p = "i",
+#                                   ksads_ptsd_raw_765_p ="i")) %>% 
+#     mutate(exposure_violence_sum = rowSums(.[2:6])) %>% 
+#     select("subjectkey", "exposure_violence_sum")
+# 
+# # Trauma codes
+# trauma_other <- abcd_ptsd %>% 
+#     select("subjectkey", "ksads_ptsd_raw_754_p","ksads_ptsd_raw_755_p", "ksads_ptsd_raw_756_p", "ksads_ptsd_raw_757_p", "ksads_ptsd_raw_766_p", "ksads_ptsd_raw_770_p") %>% 
+#     type_convert(col_types = cols(ksads_ptsd_raw_754_p ="i",
+#                                   ksads_ptsd_raw_755_p = "i",
+#                                   ksads_ptsd_raw_756_p = "i",
+#                                   ksads_ptsd_raw_757_p ="i",
+#                                   ksads_ptsd_raw_766_p= "i",
+#                                   ksads_ptsd_raw_770_p = "i")) %>% 
+#     mutate(trauma_other_sum = rowSums(.[2:7])) %>% 
+#     select("subjectkey", "trauma_other_sum")
+
+###############################################
+
+#All Trauma data (Trauma_num)
+#Score abcd trauma data
+trauma_all <- abcd_ptsd %>%
+  #Select columns of interest
+  select(subjectkey, ksads_ptsd_raw_754_p:ksads_ptsd_raw_770_p) %>%
+  #Convert score columns to numeric type for summing
+  type_convert(col_types = cols(ksads_ptsd_raw_754_p ="i",
+                                ksads_ptsd_raw_755_p ="i",
+                                ksads_ptsd_raw_756_p ="i",
+                                ksads_ptsd_raw_757_p ="i",
+                                ksads_ptsd_raw_758_p ="i",
+                                ksads_ptsd_raw_759_p ="i",
+                                ksads_ptsd_raw_760_p ="i",
+                                ksads_ptsd_raw_761_p ="i",
+                                ksads_ptsd_raw_762_p ="i",
+                                ksads_ptsd_raw_763_p ="i",
+                                ksads_ptsd_raw_764_p ="i",
+                                ksads_ptsd_raw_765_p ="i",
+                                ksads_ptsd_raw_766_p ="i",
+                                ksads_ptsd_raw_767_p ="i",
+                                ksads_ptsd_raw_768_p ="i",
+                                ksads_ptsd_raw_769_p ="i",
+                                ksads_ptsd_raw_770_p  = "i")) %>%
+  #Create summed scores of trauma exposures
+  mutate(trauma_num = rowSums(.[2:18])) %>%
+  select('subjectkey', 'trauma_num') 
+
+#CRPBI code
+crpbi_parent_mean <- ce_sumscores_y %>% #Acceptance Subscale, Youth Report Mean (on parent)
+    select("subjectkey", "crpbi_y_ss_parent")
+
+crpbi_caregiver_mean <- ce_sumscores_y %>% #Acceptance Subscale, Youth Report Mean (on secondary caregiver)
+    select("subjectkey", "crpbi_y_ss_caregiver")
+
+crpbi <- full_join(crpbi_caregiver_mean, crpbi_parent_mean) %>%
+  write_csv("~/Box/LS_folders/CANDLab/Projects/ABCD_Stress_Nback/DATA/crpbi_sumscores.csv")
+
+#PMQ    
+pmq_mean <- ce_sumscores_y %>% #Parental Monitoring: Youth Report Mean
+    select("subjectkey", "pmq_y_ss_mean")
+
+#School environment
+school_environment <- ce_sumscores_y %>% #SRPF School Environment Subscale, Sum (youth report)
+    select("subjectkey", "srpf_y_ss_ses")
+
+#neighborhood safety
+nb_safety <- ce_sumscores_p %>% #Neighborhood safety (parent report)
+    select("subjectkey", "nsc_p_ss_mean_3_items")
+
+#Family conflict parent report
+fam_conflict_parent <- ce_sumscores_p %>% 
+    select("subjectkey", "fes_p_ss_fc")
+
+## Get CBCL T scores
+cbcl_int <- cbclscores_y %>% 
+    select("subjectkey", "cbcl_scr_syn_internal_t") #Internalizing Tscore from CBCL
+
+cbcl_ext <- cbclscores_y %>% 
+    select("subjectkey", "cbcl_scr_syn_external_t") #Externalizing Tscore from CBCL
+
+cbcl_totprob <- cbclscores_y %>% 
+    select("subjectkey", "cbcl_scr_syn_totprob_t") #Total Problems Tscore from CBCL
+
+
+```
+
+```{r, tidy=TRUE}
+alc_prob_a <- fha1 %>% 
+    select("subjectkey", "famhx_4d_p___0", "famhx4a_p___0", "q4k_full_sib_young1_alc___0",
+           "q4k_full_sib_young2_alc___0", "q4k_full_sib_young3_alc___0", "q4k_full_sib_young4_alc___0",
+           "q4k_full_sib_young5_alc___0", "q4l_full_sib_old1_alc___0", "q4l_full_sib_old2_alc___0", 
+           "q4l_full_sib_old3_alc___0","q4l_full_sib_old4_alc___0", "q4l_full_sib_old5_alc___0") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("famhx_4d_p___0", "famhx4a_p___0", "q4k_full_sib_young1_alc___0",
+           "q4k_full_sib_young2_alc___0", "q4k_full_sib_young3_alc___0",
+           "q4k_full_sib_young4_alc___0","q4k_full_sib_young5_alc___0",
+           "q4l_full_sib_old1_alc___0", "q4l_full_sib_old2_alc___0", "q4l_full_sib_old3_alc___0",
+           "q4l_full_sib_old4_alc___0", "q4l_full_sib_old5_alc___0"))) %>% 
+    mutate(alc_prob_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "alc_prob_sum")
+
+drug_prob_a <- fha1 %>% 
+    select("subjectkey","fam_history_q5a_drugs___0", "fam_history_q5d_drugs___0",
+           "q5k_full_sib_young1_drugs___0", "q5k_full_sib_young2_drugs___0", 
+           "q5k_full_sib_young3_drugs___0", "q5k_full_sib_young4_drugs___0",
+           "q5k_full_sib_young5_drugs___0", "q5l_full_sib_old1_drugs___0", 
+           "q5l_full_sib_old2_drugs___0", "q5l_full_sib_old3_drugs___0", 
+           "q5l_full_sib_old4_drugs___0", "q5l_full_sib_old5_drugs___0") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q5a_drugs___0", "fam_history_q5d_drugs___0", 
+                  "q5k_full_sib_young1_drugs___0", "q5k_full_sib_young2_drugs___0",
+                  "q5k_full_sib_young3_drugs___0", "q5k_full_sib_young4_drugs___0",
+                  "q5k_full_sib_young5_drugs___0", "q5l_full_sib_old1_drugs___0",
+                  "q5l_full_sib_old2_drugs___0", "q5l_full_sib_old3_drugs___0", 
+                  "q5l_full_sib_old4_drugs___0", "q5l_full_sib_old5_drugs___0"))) %>% 
+    mutate(drug_prob_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "drug_prob_sum")
+
+depression_fh_a <- fha1 %>% 
+    select("subjectkey","fam_history_q6a_depression", "fam_history_q6d_depression", 
+           "q6k_full_sib_young1_depression", "q6k_full_sib_young2_depression", 
+           "q6k_full_sib_young3_depression", "q6k_full_sib_young4_depression",
+           "q6k_full_sib_young5_depression", "q6n_half_sib_old1_depression", 
+           "q6n_half_sib_old2_depression", "q6n_half_sib_old3_depression", 
+           "q6n_half_sib_old4_depression", "q6n_half_sib_old5_depression") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+     convert(int(c("fam_history_q6a_depression", "fam_history_q6d_depression",
+                   "q6k_full_sib_young1_depression","q6k_full_sib_young2_depression", 
+                   "q6k_full_sib_young3_depression", "q6k_full_sib_young4_depression",
+                   "q6k_full_sib_young5_depression", "q6n_half_sib_old1_depression", 
+                   "q6n_half_sib_old2_depression","q6n_half_sib_old3_depression", 
+                   "q6n_half_sib_old4_depression", "q6n_half_sib_old5_depression"))) %>% 
+    mutate(depression_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "depression_sum")
+
+mania_fh_a <- fha2 %>% 
+    select("subjectkey", "fam_history_q7a_mania", "fam_history_q7d_mania", "q7k_full_sib_young1_mania",
+           "q7k_full_sib_young2_mania", "q7k_full_sib_young3_mania", "q7k_full_sib_young4_mania",
+           "q7k_full_sib_young5_mania", "q7l_full_sib_old1_mania", "q7l_full_sib_old2_mania",
+           "q7l_full_sib_old3_mania", "q7l_full_sib_old4_mania", "q7l_full_sib_old5_mania") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q7a_mania", "fam_history_q7d_mania", "q7k_full_sib_young1_mania",
+           "q7k_full_sib_young2_mania", "q7k_full_sib_young3_mania", "q7k_full_sib_young4_mania",
+           "q7k_full_sib_young5_mania", "q7l_full_sib_old1_mania", "q7l_full_sib_old2_mania",
+           "q7l_full_sib_old3_mania", "q7l_full_sib_old4_mania", "q7l_full_sib_old5_mania"))) %>% 
+    mutate(mania_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "mania_sum")
+
+schiz_fh_a <- fha2 %>% 
+    select("subjectkey", "fam_history_q8a_visions", "fam_history_q8d_visions", "q8k_full_sib_young1_visions",
+           "q8k_full_sib_young2_visions", "q8k_full_sib_young3_visions", "q8k_full_sib_young4_visions",
+           "q8k_full_sib_young5_visions", "q8l_full_sib_old1_visions", "q8l_full_sib_old2_visions",
+           "q8l_full_sib_old3_visions", "q8l_full_sib_old4_visions", "q8l_full_sib_old5_visions") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q8a_visions", "fam_history_q8d_visions", "q8k_full_sib_young1_visions",
+           "q8k_full_sib_young2_visions", "q8k_full_sib_young3_visions", "q8k_full_sib_young4_visions",
+           "q8k_full_sib_young5_visions", "q8l_full_sib_old1_visions", "q8l_full_sib_old2_visions",
+           "q8l_full_sib_old3_visions", "q8l_full_sib_old4_visions", "q8l_full_sib_old5_visions"))) %>% 
+    mutate(schiz_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey","schiz_sum")
+
+crim_fh_a <- fha2 %>% 
+    select("subjectkey", "fam_history_q9a_trouble", "fam_history_q9d_trouble", 
+           "q9k_full_sib_young1_trouble", "q9k_full_sib_young2_trouble", 
+           "q9k_full_sib_young3_trouble", "q9k_full_sib_young4_trouble",
+           "q9k_full_sib_young5_trouble", "q9l_full_sib_old1_trouble", "q9l_full_sib_old2_trouble",
+           "q9l_full_sib_old3_trouble", "q9l_full_sib_old4_trouble", "q9l_full_sib_old5_trouble") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q9a_trouble", "fam_history_q9d_trouble", "q9k_full_sib_young1_trouble",
+           "q9k_full_sib_young2_trouble", "q9k_full_sib_young3_trouble", "q9k_full_sib_young4_trouble",
+           "q9k_full_sib_young5_trouble", "q9l_full_sib_old1_trouble", "q9l_full_sib_old2_trouble",
+           "q9l_full_sib_old3_trouble", "q9l_full_sib_old4_trouble", "q9l_full_sib_old5_trouble"))) %>% 
+    mutate(criminal_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "criminal_sum")
+
+anx_fh_a <- fha2 %>% 
+    select("subjectkey", "fam_history_q10a_nerves", "fam_history_q10d_nerves", "q10k_full_sib_young1_nerves", 
+           "q10k_full_sib_young2_nerves", "q10k_full_sib_young3_nerves", "q10k_full_sib_young4_nerves",
+           "q10k_full_sib_young5_nerves", "q10l_full_sib_old1_nerves", "q10l_full_sib_old2_nerves",
+           "q10l_full_sib_old3_nerves", "q10l_full_sib_old4_nerves", "q10l_full_sib_old5_nerves") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q10a_nerves", "fam_history_q10d_nerves", "q10k_full_sib_young1_nerves", 
+           "q10k_full_sib_young2_nerves", "q10k_full_sib_young3_nerves", "q10k_full_sib_young4_nerves",
+           "q10k_full_sib_young5_nerves", "q10l_full_sib_old1_nerves", "q10l_full_sib_old2_nerves",
+           "q10l_full_sib_old3_nerves", "q10l_full_sib_old4_nerves", "q10l_full_sib_old5_nerves"))) %>% 
+    mutate(anxious_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "anxious_sum")
+    
+suicide_fh_a <- fha2 %>% 
+    select("subjectkey", "fam_history_q13a_suicide", "fam_history_q13d_suicide", "q13k_full_sib_young1_suicide",
+           "q13k_full_sib_young2_suicide", "q13k_full_sib_young3_suicide", "q13k_full_sib_young4_suicide",
+           "q13k_full_sib_young5_suicide", "q13l_full_sib_old1_suicide", "q13l_full_sib_old2_suicide",
+           "q13l_full_sib_old3_suicide", "q13l_full_sib_old4_suicide", "q13l_full_sib_old5_suicide") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q13a_suicide", "fam_history_q13d_suicide", "q13k_full_sib_young1_suicide",
+           "q13k_full_sib_young2_suicide", "q13k_full_sib_young3_suicide", "q13k_full_sib_young4_suicide",
+           "q13k_full_sib_young5_suicide", "q13l_full_sib_old1_suicide", "q13l_full_sib_old2_suicide",
+           "q13l_full_sib_old3_suicide", "q13l_full_sib_old4_suicide", "q13l_full_sib_old5_suicide"))) %>% 
+    mutate(suicide_sum = rowSums(.[2:13], na.rm=TRUE)) %>% 
+    select("subjectkey", "suicide_sum")
+
+
+#Sum FH scores for Criminal behavior, family mental health, substance abuse
+
+#Criminal behavior
+criminal_fh_a <- crim_fh_a
+
+#Family mental health
+mentalhealth_fh_a <- full_join(depression_fh_a, mania_fh_a) %>%
+                                 full_join(suicide_fh_a) %>% 
+                                 full_join(schiz_fh_a) %>% 
+                                 full_join(anx_fh_a) %>% 
+                                 mutate(mentalhealth_sum = rowSums(.[2:6])) %>% 
+                                 select("subjectkey","mentalhealth_sum")
+
+substance_fh_a <- full_join(alc_prob_a, drug_prob_a) %>% 
+    mutate(substance_sum = rowSums(.[2:3])) %>% 
+    select("subjectkey","substance_sum")
+
+
+#Sum all family history to reduce sparsity
+fam_hist_a <- full_join(mentalhealth_fh_a, criminal_fh_a, by="subjectkey") %>% 
+    full_join(substance_fh_a, by="subjectkey") %>% 
+    mutate(fam_hist = rowSums(.[2:4], na.rm=TRUE)) %>% 
+    select("subjectkey", "fam_hist")
+
+write_csv(fam_hist_a, "~/Box/LS_Folders/CANDLab/Projects/ABCD_Stress_Nback/DATA/ImmediateFam_MH_History.csv")
+```
+
+```{r, tidy=T}
+###PARENT MH ONLY###
+#Substance abuse    
+
+alc_prob_p <- fha1 %>% 
+    select("subjectkey", "famhx_4d_p___0", "famhx4a_p___0") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("famhx_4d_p___0", "famhx4a_p___0"))) %>% 
+    mutate(alc_prob_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "alc_prob_sum")
+
+drug_prob_p <- fha1 %>% 
+    select("subjectkey","fam_history_q5a_drugs___0", "fam_history_q5d_drugs___0") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q5a_drugs___0", "fam_history_q5d_drugs___0"))) %>% 
+    mutate(drug_prob_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "drug_prob_sum")
+
+depression_fh_p <- fha1 %>% 
+    select("subjectkey","fam_history_q6a_depression", "fam_history_q6d_depression") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+     convert(int(c("fam_history_q6a_depression", "fam_history_q6d_depression"))) %>% 
+    mutate(depression_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "depression_sum")
+
+mania_fh_p <- fha2 %>% 
+    select("subjectkey", "fam_history_q7a_mania", "fam_history_q7d_mania") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q7a_mania", "fam_history_q7d_mania"))) %>% 
+    mutate(mania_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "mania_sum")
+
+schiz_fh_p <- fha2 %>% 
+    select("subjectkey", "fam_history_q8a_visions", "fam_history_q8d_visions") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q8a_visions", "fam_history_q8d_visions"))) %>% 
+    mutate(schiz_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey","schiz_sum")
+
+crim_fh_p <- fha2 %>% 
+    select("subjectkey", "fam_history_q9a_trouble", "fam_history_q9d_trouble") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q9a_trouble", "fam_history_q9d_trouble"))) %>% 
+    mutate(criminal_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "criminal_sum")
+
+anx_fh_p <- fha2 %>% 
+    select("subjectkey", "fam_history_q10a_nerves", "fam_history_q10d_nerves") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q10a_nerves", "fam_history_q10d_nerves"))) %>% 
+    mutate(anxious_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "anxious_sum")
+    
+suicide_fh_p <- fha2 %>% 
+    select("subjectkey", "fam_history_q13a_suicide", "fam_history_q13d_suicide") %>% 
+    dplyr::na_if("777") %>% 
+    dplyr::na_if("999") %>% 
+    convert(int(c("fam_history_q13a_suicide", "fam_history_q13d_suicide"))) %>% 
+    mutate(suicide_sum = rowSums(.[2:3], na.rm=TRUE)) %>% 
+    select("subjectkey", "suicide_sum")
+
+
+#Sum FH scores for Criminal behavior, family mental health, substance abuse
+
+#Criminal behavior
+criminal_fh_p <- crim_fh_p
+
+#Family mental health
+mentalhealth_fh_p <- full_join(depression_fh_p, mania_fh_p) %>%
+                                 full_join(suicide_fh_p) %>% 
+                                 full_join(schiz_fh_p) %>% 
+                                 full_join(anx_fh_p) %>% 
+                                 mutate(mentalhealth_sum = rowSums(.[2:6])) %>% 
+                                 select("subjectkey","mentalhealth_sum")
+
+#Substance abuse    
+substance_fh_p <- full_join(alc_prob_p, drug_prob_p) %>% 
+    mutate(substance_sum = rowSums(.[2:3])) %>% 
+    select("subjectkey","substance_sum")
+
+
+#Sum all family history to reduce sparsity
+fam_hist_p <- full_join(mentalhealth_fh_p, criminal_fh_p, by="subjectkey") %>% 
+    full_join(substance_fh_p, by="subjectkey") %>% 
+    mutate(fam_hist = rowSums(.[2:4], na.rm=TRUE)) %>% 
+    select("subjectkey", "fam_hist")
+
+write_csv(fam_hist_p, "~/Box/LS_Folders/CANDLab/Projects/ABCD_Stress_Nback/DATA/parent_MH_History.csv")
+
+```
+
+
+```{r, tidy=TRUE}
+# Create final data frame
+final_join <- full_join(crpbi_parent_mean, crpbi_caregiver_mean, by=c("subjectkey")) %>% 
+    #full_join(phys_ab, by="subjectkey") %>% 
+    #full_join(sex_ab, by="subjectkey") %>% 
+    #full_join(exp_violence, by="subjectkey") %>% 
+    #full_join(trauma_other, by="subjectkey") %>% 
+    full_join(trauma_all, by='subjectkey') %>% 
+    #full_join(mentalhealth_fh, by="subjectkey") %>% 
+    #full_join(substance_fh, by="subjectkey") %>% 
+    #full_join(criminal_fh, by="subjectkey") %>% 
+    full_join(fam_hist, by="subjectkey") %>% 
+    full_join(pmq_mean, by="subjectkey") %>% 
+    full_join(school_environment, by="subjectkey") %>% 
+    full_join(nb_safety, by="subjectkey") %>% 
+    full_join(fam_conflict_parent, by="subjectkey") %>% 
+    full_join(cbcl_int, by="subjectkey") %>% 
+    full_join(cbcl_ext, by="subjectkey") %>% 
+    full_join(cbcl_totprob, by="subjectkey") %>% 
+    mutate("subjectkey" = str_remove(subjectkey, "_"))
+
+
+```
+
+```{r, tidy=TRUE}
+#Write data to CSV
+
+# write_csv(final_join, 'FILEPATHHERE/pheno_data.csv')
+
+```
+
